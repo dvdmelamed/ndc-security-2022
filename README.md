@@ -10,7 +10,7 @@ Installation
 2. Install dependencies (`pip install -r requirements.txt`)
 3. Run the API (`uvicorn main:app --port 8000`)
 
-There are 3 endpoints:
+There are 4 endpoints:
 * `/movies`: list of movies
 * `/movies?title=<TITLE>`: to search for a particular movie
 * `/movie/<id>`: to get some details about a movie
