@@ -1,0 +1,114 @@
+name: Running Tests
+
+on: [push]
+
+jobs:
+  SAST:
+    runs-on: ubuntu-latest
+    name: Static-Vulnerability-Scanner
+    steps:
+      - uses: actions/checkout@v1
+      - name: SAST
+        uses: jpetrucciani/bandit-check@master
+        with:
+          path: '.'
+          bandit_flags: '-ll -o output.json -f json'
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: bandit_scan
+          path: output.json
+
+  SECRET:
+    runs-on: ubuntu-latest
+    name: Secret-Scanner
+    steps:
+      - uses: actions/checkout@v1
+      - name: Secret Detection
+        uses: zricethezav/gitleaks-action@master
+
+  DAST:
+    runs-on: ubuntu-latest
+    name: API-Security-Scanner
+    services:
+      movies:
+        image: ghcr.io/dvdmelamed/goat-movies
+        options: >-
+          --health-cmd="curl http://127.0.0.1:80/movies/count || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+        ports:
+          - 8089:80
+    steps:
+      - name: ZAP Scan
+        uses: zaproxy/action-api-scan@v0.1.0
+        with:
+          format: openapi
+          target: 'http://127.0.0.1:8089/openapi.json'
+          fail_action: true
+
+  INFRA:
+    runs-on: ubuntu-latest
+    name: Infrastructure misconfig detection
+    steps:
+      - uses: actions/checkout@v2
+      - name: run kics Scan
+        uses: checkmarx/kics-github-action@v1.4
+        with:
+          path: 'terraform'
+          output_path: myResults/
+      - name: display kics results
+        run: |
+          cat myResults/results.json
+
+  SCA:
+    runs-on: ubuntu-latest
+    name: Dependency-Checker
+    steps:
+      - uses: actions/checkout@v1
+      - run: |
+          pip install safety
+          safety check -r requirements.txt --json -o output.json
+      - uses: actions/upload-artifact@v2
+        if: always()
+        with:
+          name: safety
+          path: output.json
+
+  CONTAINER:
+    runs-on: ubuntu-18.04
+    name: Container scanning
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Build an image from Dockerfile
+        run: |
+          docker build -t docker.io/dvdmelamed/goat-movies:${{ github.sha }} .
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: 'docker.io/dvdmelamed/goat-movies:${{ github.sha }}'
+          format: 'table'
+          exit-code: '1'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+
+  MFA:
+    runs-on: ubuntu-latest
+    name: MFA-Checker
+    steps:
+      - uses: actions/github-script@v4
+        with:
+          github-token: ${{secrets.MY_ORG_TOKEN}}
+          script: |
+            const result = await github.orgs.listMembers({org: "jitsecurity-cto", filter: "2fa_disabled"});
+            if (result['data'].length > 0) {
+              result['data'].forEach(function(obj) { 
+                console.log("FAIL: " + obj['login'] + " does not have MFA enabled"); 
+              });
+            }
+            process.exit((result['data'].length > 0) ? 1 : 0);
