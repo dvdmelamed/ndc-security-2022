@@ -1,4 +1,4 @@
-# MVS for Modern Tech Stacks
+# MVS for Modern Tech Stacks 
 
 Example of MVS for a simple python app managing movies and their actors
 
