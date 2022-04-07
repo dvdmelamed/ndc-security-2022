@@ -11,7 +11,7 @@ Installation
 3. Run the API (`uvicorn main:app --port 8000`)
 
 There are 3 endpoints:
-`/movies`: list of movies
-`/movies?title=<TITLE>`: to search for a particular movie
-`/movie/<id>`: to get some details about a movie
-`/movie/<id>/stars`: to get the list of the movie actors
+* `/movies`: list of movies
+* `/movies?title=<TITLE>`: to search for a particular movie
+* `/movie/<id>`: to get some details about a movie
+* `/movie/<id>/stars`: to get the list of the movie actors
